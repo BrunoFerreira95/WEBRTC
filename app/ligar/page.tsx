@@ -2,7 +2,7 @@
 import 'webrtc';
 import firebase from 'firebase/app';
 import 'firebase/firestore';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useSession } from '@supabase/auth-helpers-react';
 import { useRouter } from 'next/navigation';
@@ -15,44 +15,41 @@ import { connectFirebase } from '../../lib/firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Alert from '../assets/icons/alert.svg'
+import React from 'react';
 
-
-export default function GcmComunicasao() {
+const GcmComunicasao = () => {
   // --- Estados e Refs ---
-  const [modalCall, setModalCall] = useState(false); // Controla a exibição do modal de chamada
-  const [inputCallValue, setInputCallValue] = useState(''); // Valor do input do código da chamada
-  const [receive, setReceive] = useState(false); // Indica se a chamada foi recebida
-  const [call, setCall] = useState(false); // Indica se há uma chamada ativa
-  const [showStop, setShowStop] = useState(false); // Controla a exibição do botão de parar
-  const [message, setMessage] = useState(''); // Mensagem do chat
-  const [chat, setChat] = useState([]); // Lista de mensagens do chat
+  const [modalCall, setModalCall] = useState(false);
+  const [inputCallValue, setInputCallValue] = useState('');
+  const [receive, setReceive] = useState(false);
+  const [call, setCall] = useState(false);
+  const [showStop, setShowStop] = useState(false);
+  const [message, setMessage] = useState('');
+  const [chat, setChat] = useState([]);
     const [userIdCall, setUserIdCall] = useState();
+  const webcamVideo = useRef<HTMLVideoElement>(null);
+  const callButton = useRef<HTMLButtonElement>(null);
+  const callInput = useRef<HTMLInputElement>(null);
+  const answerButton = useRef<HTMLButtonElement>(null);
+  const remoteVideo = useRef<HTMLVideoElement>(null);
+  const hangupButton = useRef<HTMLButtonElement>(null);
+  const stopButtonRef = useRef<HTMLButtonElement>(null);
+    const messageInput = useRef<HTMLInputElement>(null);
 
-  const webcamButton = useRef<HTMLButtonElement>(null); // Botão da webcam
-  const clientButton = useRef<HTMLButtonElement>(null); // Botão do cliente
-  const webcamVideo = useRef<HTMLVideoElement>(null); // Vídeo local
-  const callButton = useRef<HTMLButtonElement>(null); // Botão de chamar
-  const callInput = useRef<HTMLInputElement>(null); // Input de código da chamada
-  const answerButton = useRef<HTMLButtonElement>(null); // Botão de atender
-  const remoteVideo = useRef<HTMLVideoElement>(null); // Vídeo remoto
-  const hangupButton = useRef<HTMLButtonElement>(null); // Botão de desligar
-  const stopButtonRef = useRef<HTMLButtonElement>(null); // Botão de parar
-
-  const chatContainerRef = useRef<HTMLDivElement>(null); // Ref para a div do chat
-
+    const chatContainerRef = useRef<HTMLDivElement>(null);
   // -- Configurações Iniciais ---
-  const { firestore, pc } = connectFirebase(); // Conecta ao Firebase
-  const router = useRouter(); // Roteador do Next.js
-  const session = useSession(); // Sessão do usuário Supabase
-    let localStream = null; // Stream local de mídia (câmera/microfone)
-    let remoteStream = null; // Stream remoto de mídia
+  const { firestore, pc } = connectFirebase();
+  const router = useRouter();
+  const session = useSession();
+    let localStream: MediaStream | null = null;
+    let remoteStream: MediaStream | null = null;
 
       if(typeof window !== 'undefined'){
-            remoteStream = new MediaStream()
+            remoteStream = new MediaStream();
       }
 
 
-  // --- Funções Auxiliares ---
+  // --- Aux Functions ---
   function stopCamera() {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
@@ -99,7 +96,7 @@ export default function GcmComunicasao() {
         await supabase.from('signalSendToast').insert([{ code: '1' }]).select();
     }
 
-  const Signal = async () => {
+    const Signal = async () => {
     const dataAtual = new Date().toLocaleString('pt-BR', {
       timeZone: 'UTC'
     })
@@ -107,16 +104,17 @@ export default function GcmComunicasao() {
       /(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/,
       '$3-$2-$1 $4:$5:$6'
     )
-      await supabase.from('signalApoio').insert([
-      {
-        name: session?.user.user_metadata.nome,
-        telefone: session?.user.user_metadata.telefone,
-        data: dataFormatada,
-        IdUser: session?.user.id
-      }
-    ])
-  }
-
+    await supabase
+      .from('signalApoio')
+      .insert([
+        {
+          name: session?.user.user_metadata.nome,
+          telefone: session?.user.user_metadata.telefone,
+          data: dataFormatada,
+          IdUser: session?.user.id
+        }
+      ])
+    };
   const sendMessage = async () => {
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleDateString();
@@ -132,174 +130,173 @@ export default function GcmComunicasao() {
           ])
           .select();
       setMessage('');
-  };
-
-  const handleKeyDown = (e) => {
-      if (e.key === 'Enter') {
-          sendMessage();
+      if(messageInput.current){
+          messageInput.current.value = '';
       }
   };
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    };
 
-  function reconectar() {
-      router.refresh();
-  }
-  
-    // --- Funções de Chamada ---
+    function reconectar() {
+        router.refresh();
+    }
+
+    // --- Call Functions ---
+
     const startCall = async () => {
-        //Obter o stream da câmera e microfone
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: true,
-        });
+      localStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true,
+      });
 
-        // Adicionar tracks do localStream ao PeerConnection
-        localStream.getTracks().forEach((track) => {
-            pc.addTrack(track, localStream);
-        });
-
-        // Pull tracks from remote stream, add to video stream
+      localStream.getTracks().forEach((track) => {
+          pc.addTrack(track, localStream);
+      });
         pc.ontrack = (event) => {
             event.streams[0].getTracks().forEach((track) => {
-                remoteStream.addTrack(track);
+                remoteStream?.addTrack(track);
             });
         };
         const videoElementRemote = remoteVideo.current;
-        videoElementRemote.srcObject = remoteStream;
+          if(videoElementRemote){
+              videoElementRemote.srcObject = remoteStream;
+          }
 
       callButton.disabled = false;
       answerButton.disabled = false;
-      webcamButton.disabled = true;
       hangupButton.disabled = false;
       setCall(true);
       setReceive(true);
       setShowStop(true);
       answerButtonClick();
-  };
-  const answerButtonClick = async () => {
-        remoteVideo.current.hidden = false;
-        const callId = inputCallValue;
+    };
+
+    const answerButtonClick = async () => {
+      if (remoteVideo.current) {
+          remoteVideo.current.hidden = false;
+      }
+    const callId = inputCallValue;
         const callDoc = firestore.collection('calls').doc(callId);
-        const answerCandidates = callDoc.collection('answerCandidates');
+      const answerCandidates = callDoc.collection('answerCandidates');
         const offerCandidates = callDoc.collection('offerCandidates');
         pc.onicecandidate = (event) => {
             event.candidate && answerCandidates.add(event.candidate.toJSON());
         };
-        const callData = (await callDoc.get()).data();
-        if (callData) {
-            const offerDescription = callData.offer;
-            await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
-            const answerDescription = await pc.createAnswer();
-            await pc.setLocalDescription(answerDescription);
-            const answer = {
-                type: answerDescription.type,
-                sdp: answerDescription.sdp,
-            };
-            await callDoc.update({ answer });
-
-            offerCandidates.onSnapshot((snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') {
-                        let data = change.doc.data();
-                        pc.addIceCandidate(new RTCIceCandidate(data));
-                         if (pc?.iceConnectionState === 'closed' || pc?.iceConnectionState === 'disconnected' || pc?.iceConnectionState === 'failed') {
-                           setModalCall(true)
-                            SignalErrorConnect()
-                        } else {
-                        }
-                    }
-                });
-            });
-        }
+      const callData = (await callDoc.get()).data();
+      if (callData) {
+          const offerDescription = callData.offer;
+          await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+        const answerDescription = await pc.createAnswer();
+        await pc.setLocalDescription(answerDescription);
+          const answer = {
+            type: answerDescription.type,
+            sdp: answerDescription.sdp,
+          };
+        await callDoc.update({ answer });
+        offerCandidates.onSnapshot((snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+                let data = change.doc.data();
+                pc.addIceCandidate(new RTCIceCandidate(data));
+                 if (pc?.iceConnectionState === 'closed' || pc?.iceConnectionState === 'disconnected' || pc?.iceConnectionState === 'failed') {
+                   setModalCall(true)
+                    SignalErrorConnect()
+                } else {
+                }
+            }
+          });
+        });
+      }
         pc.ontrack = (event) => {
-            remoteVideo.current.srcObject = event.streams[0];
+            if(remoteVideo.current){
+                  remoteVideo.current.srcObject = event.streams[0];
+            }
         };
         pc.oniceconnectionstatechange = () => {
-          if (pc.iceConnectionState === 'connected') {
-            signalSendToast()
+            if (pc.iceConnectionState === 'connected') {
+              signalSendToast()
                 console.log('Conexão estabelecida com sucesso!');
           } else if (pc.iceConnectionState === 'disconnected') {
-             setModalCall(true)
+               setModalCall(true)
                 SignalErrorConnect()
             }
         };
     };
-
-    const stopOffer = async () => {
-        await supabase.from('signalCancelCall').insert([{ code: '1' }]).select();
-    stopCamera()
-        if (pc) {
-            const callDocId = callInput.current?.value;
-            if (callDocId) {
-                const callDoc = firestore.collection('calls').doc(callDocId);
-                await callDoc.delete();
-            }
-            pc.close();
-        }
-        router.refresh();
+  const stopOffer = async () => {
+      await supabase.from('signalCancelCall').insert([{ code: '1' }]).select();
+    stopCamera();
+    if (pc) {
+      const callDocId = callInput.current?.value;
+        if (callDocId) {
+          const callDoc = firestore.collection('calls').doc(callDocId);
+        await callDoc.delete();
+      }
+      pc.close();
+    }
+    router.refresh();
     if (callInput.current) {
-      callInput.current.value = '';
+        callInput.current.value = '';
     }
     setInputCallValue('');
     if (remoteVideo.current) {
       remoteVideo.current.hidden = true;
     }
-    if (stopButtonRef.current) {
-      stopButtonRef.current.hidden = true;
-    }
-  };
+      if (stopButtonRef.current) {
+          stopButtonRef.current.hidden = true;
+      }
+    };
 
-    // --- Efeitos Colaterais (useEffect) ---
+    // --- Effects ---
+
   useEffect(() => {
-    // Rola a div do chat para a parte inferior sempre que houver uma nova mensagem
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chat]);
 
     useEffect(() => {
-        // Listen for the 'popstate' event to handle the back button clicks
         window.addEventListener('popstate', stopOffer);
-
-        // Clean up the event listener when the component unmounts
         return () => {
             window.removeEventListener('popstate', stopOffer);
         };
     }, []);
+
   useEffect(() => {
-        // Verifica se o usuário tem permissão (não-PM)
     if (
       session?.user.app_metadata &&
       session.user.app_metadata.userrole !== 'pm'
     ) {
       router.push('/404');
     }
+    supabase
+      .channel('custom-insert-channel2')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'codigoComunicacao' },
+        (payload) => {
+          setInputCallValue(payload.new.codigo);
+            setUserIdCall(payload.new.IdUser);
+        }
+      )
+      .subscribe();
       supabase
-          .channel('custom-insert-channel2')
-          .on(
-              'postgres_changes',
-              { event: 'INSERT', schema: 'public', table: 'codigoComunicacao' },
-              (payload) => {
-                  setInputCallValue(payload.new.codigo);
-                   setUserIdCall(payload.new.IdUser);
-              }
-          )
-          .subscribe();
-      supabase
-          .channel('chat')
-          .on(
-              'postgres_changes',
-              { event: 'insert', schema: 'public', table: 'chat' },
-              () => {
-                  fetchChat();
-              }
-          )
-          .subscribe();
+        .channel('chat')
+        .on(
+          'postgres_changes',
+          { event: 'insert', schema: 'public', table: 'chat' },
+          () => {
+            fetchChat();
+          }
+        )
+        .subscribe();
   }, [session, router]);
     useEffect(() => {
         fetchChat();
     }, []);
-
-    useEffect(() => {
+  useEffect(() => {
       supabase
         .channel('custom-all-channelasd')
         .on(
@@ -311,143 +308,128 @@ export default function GcmComunicasao() {
         )
         .subscribe();
     }, [])
-
-    useEffect(() => {
-      supabase
-        .channel('custom-all-channel')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'signalCancelInteligencia' },
-          () => {
-            reconectar();
-          }
-        )
-        .subscribe();
-    }, [])
-
+      useEffect(() => {
+          supabase
+              .channel('custom-all-channel')
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'signalCancelInteligencia' },
+                  () => {
+                      reconectar();
+                  }
+              )
+              .subscribe();
+      }, [])
   useEffect(() => {
       showToast();
       Signal();
   }, []);
   useEffect(() => {
-      if (inputCallValue.length > 0) {
-          startCall();
-      }
+    if (inputCallValue.length > 0) {
+      startCall();
+    }
   }, [inputCallValue]);
-
-
-  // --- JSX ---
   return (
-    <div className="bg-fundo min-h-screen max-h-fit">
-          
-        <div className="flex justify-center mb-5 ml-24 mr-10">
-              <div className="videos flex flex-row">
-          
-          <span>
-            <video
-                controls
-              className="w-4/5 h-96  "
-                ref={remoteVideo}
-              autoPlay
-              hidden
-              playsInline
-            ></video>
-          </span>
-        </div>
-        </div>
-        <div className="flex justify-center sm:mr-20 ml-2 sm:mt-4">
-            {inputCallValue.length > 0 ? (
-                <>
-                    <button hidden ref={clientButton} onClick={startCall}>
-                    <Image src={Play} alt="play" />
-                </button>
-              </>
-            ) : (
-                <></>
-            )}
-          <input
-            ref={callInput}
-                hidden
-            className="bg-write sm:h-8 sm:w-72 w-32 h-auto font-bold"
-            defaultValue={inputCallValue}
-          />
-          {inputCallValue.length < 0 ? (
-            <button
-              ref={answerButton}
-                className="bg-red-600 sm:h-8 font-semibold sm:w-52 sm:rounded-md rounded-sm ml-4 text-sm"
-              onClick={answerButtonClick}
-            >
-              Receber
-            </button>
-          ) : (
-            <></>
-          )}
-            {showStop ? (
-              <button ref={stopButtonRef} onClick={stopOffer}>
-                <Image src={Fechar} alt="Fechar" />
-              </button>
-            ) : null}
-      </div>
-        <div>
-            <div className="flex justify-center">
-            <div
-                className="h-44 overflow-auto w-full rounded mb-4 mt-6 bg-white bg-write border border-gray-300 m-5"
-                ref={chatContainerRef}
-            >
-                {chat.map((mensagem) => (
-                    <div key={mensagem.id + 1} className="flex flex-col">
-                        <div className="ml-2 mr-2">
-                            {mensagem.name === 'GCM' ? (
-                                <>
-                                    <div className="flex justify-end">
-                      <span className="p-1 bg-blue-100 text-black rounded-tl-lg rounded-br-lg rounded-bl-lg">
-                        {mensagem.name}:{mensagem.mensagem}
-                      </span>
-                                    </div>
-                                    <div className="flex justify-end">
-                      <span className="text-sm text-gray-400 mt-1 ">
-                        {mensagem.data}
-                      </span>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex justify-start">
-                      <span className="p-1 bg-gray-200 rounded-tr-lg rounded-br-lg rounded-bl-lg text-black ">
-                        {mensagem.name}:{mensagem.mensagem}
-                      </span>
-                                    </div>
-                                    <div className="flex justify-start">
-                      <span className="text-sm text-gray-400 mt-1 ">
-                        {mensagem.data}
-                      </span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                ))}
+      <div className="bg-fundo min-h-screen max-h-fit p-4">
+          <div className="flex justify-center mb-5">
+             <h2 className="text-2xl font-bold text-center">Painel do GCM</h2>
+          </div>
+        <div className="flex flex-col md:flex-row justify-center gap-4 mb-4">
+              <div className="videos flex flex-col items-center w-full md:w-2/3">
+              <div className="relative w-full max-w-2xl aspect-video mb-4">
+                    <video
+                      className="absolute top-0 left-0 w-full h-full rounded-lg object-cover"
+                        ref={remoteVideo}
+                      autoPlay
+                      hidden
+                        controls
+                      playsInline
+                        style={{backgroundColor: 'black'}}
+                    />
             </div>
-      </div>
+                  <div className="flex justify-center">
+                        {showStop ? (
+                        <button
+                                    ref={stopButtonRef}
+                          onClick={stopOffer}
+                          className="bg-red-500 text-white font-bold px-4 py-2 rounded-md hover:bg-red-700 transition-all duration-300 flex items-center"
+                            >
+                          <Image src={Fechar} alt="Fechar" className="h-6 w-6 mr-2" />
+                                Parar Ligação
+                        </button>
+                         ) : null}
+                    </div>
+        </div>
+          {/* Controls Area */}
+          <div className="flex flex-col w-full md:w-1/3 max-w-sm">
+              <div className="bg-gray-100 p-4 rounded-md shadow-md flex flex-col gap-2 mb-4">
+                  {/* Call Control  */}
+                    <input
+                          ref={callInput}
+                          hidden
+                          className="bg-white h-8 font-semibold rounded-md mb-2 "
+                          onChange={handleInputCallChange}
+                          value={inputCallValue}
+                      />
+                    {inputCallValue.length > 0 ? (
+                        <>
+                            <button
+                                ref={callButton}
+                                className="bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-all duration-300 hidden"
+                            >
+                                Fazer Ligação
+                            </button>
+                        </>
+                        ) : (
+                        <button
+                                ref={answerButton}
+                            className="bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-all duration-300"
+                            onClick={answerButtonClick}
+                        >
+                                Atender Ligação
+                            </button>
+                    )}
+              </div>
+            </div>
+          </div>
+          {/* Chat Section */}
       <div className="flex justify-center">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="border-2 border-gray-300 px-4 py-2 w-full rounded-lg ml-5 focus:outline-none focus:border-blue-500"
-          onKeyDown={handleKeyDown} // Adicione este atributo para detectar a tecla "Enter"
-          placeholder="Digite uma mensagem"
-        />
-        <button
-          className="py-2 px-4 flex items-center"
-          onClick={sendMessage}
-        >
-          <Image src={Message} alt="icon" className="w-5 h-5 mr-2" />
-        </button>
-      </div>
+        <div className="w-full max-w-3xl mt-4 bg-white p-4 rounded-md shadow-md">
+              <div
+                  ref={chatContainerRef}
+                  className="h-60 overflow-y-auto mb-2 p-2 border rounded-md"
+                  >
+                {chat.map((message, index) => (
+                      <div key={index} className="mb-2 p-2 rounded-md bg-gray-100">
+                          <span className="font-semibold">{message.name}:</span>
+                          <p className="whitespace-pre-line">{message.mensagem}</p>
+                            <p className="text-xs text-gray-500">
+                                {message.data}
+                              </p>
+                      </div>
+                  ))}
+              </div>
+            <div className="flex gap-2 items-center">
+                <input
+                    ref={messageInput}
+                    type="text"
+                  className="flex-grow border p-2 rounded-md"
+                  placeholder="Escreva sua mensagem..."
+                    onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  />
+                <button
+                      onClick={sendMessage}
+                  className="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 p-2 rounded-md transition duration-300"
+                    >
+                        <Image src={Message} alt="Send Message" className="h-6 w-6" />
+                </button>
+            </div>
+          </div>
+        </div>
         {modalCall ? <Dialog setModal={setModalCall} /> : null}
-    </div>
-    <ToastContainer />
+        <ToastContainer />
     </div>
   );
-}
+};
+export default GcmComunicasao;
