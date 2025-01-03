@@ -68,10 +68,14 @@ const InteligenciaComunicacao = () => {
     const { data } = await supabase.from('chat').select('*');
     setChat(data);
   };
-  document.body.click();
+  if (typeof document !== 'undefined') {
+    document.body.click();
+  }
+
+
   const playSound = () => {
-    const audio = new Audio(SignalApoio);
-    audio.play();
+       const audio = new Audio(SignalApoio);
+        audio.play();
   };
   const sendSignal = async () => {
     const dataAtual = new Date().toLocaleString('pt-BR', {
