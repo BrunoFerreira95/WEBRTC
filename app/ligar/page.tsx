@@ -51,9 +51,7 @@ export default function GcmComunicasao() {
   // 1. Setup media sources ---------------------------------------------------------------------------------------
 
   const clientButtonClick = async () => {
-    if (userIdCall != session?.user.id) {
-      return
-    }
+
     localStream = await navigator.mediaDevices.getUserMedia({
       video: false,
       audio: true
@@ -255,80 +253,8 @@ export default function GcmComunicasao() {
       }
     };
 
-    voiceReceiverCall()
   };
 
-
-
-
-  // ------------------------------------------------------------------- VOICE CALL --------------------------------------------------------------------------------
-  // // VOICE CALL ---------------------------------------------------------------------------------
-  const voiceClick = async () => {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: false,
-      audio: true
-    })
-    remoteStream = new MediaStream()
-
-    // Push tracks from local stream to peer connection
-    localStream.getTracks().forEach((track) => {
-      pc.addTrack(track, localStream)
-    })
-
-    // Pull tracks from remote stream, add to video stream
-    pc.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
-        remoteStream.addTrack(track)
-      })
-    }
-    const videoElementRemote = voiceSound.current
-    videoElementRemote.srcObject = remoteStream
-
-    callButton.disabled = false
-    answerButton.disabled = false
-    webcamButton.disabled = true
-    hangupButton.disabled = false
-  }
-
-  // 3. Answer the call with the unique ID
-  const voiceReceiverCall = async () => {
-    const callId = callInput.current.value
-    const callDoc = firestore.collection('voice').doc(callId)
-    const answerCandidates = callDoc.collection('answerCandidates')
-    const offerCandidates = callDoc.collection('offerCandidates')
-
-    pc.onicecandidate = (event) => {
-      event.candidate && answerCandidates.add(event.candidate.toJSON())
-    }
-
-    const callData = (await callDoc.get()).data()
-
-    if (callData) {
-
-      const offerDescription = callData.offer
-      await pc.setRemoteDescription(new RTCSessionDescription(offerDescription))
-
-      const answerDescription = await pc.createAnswer()
-      await pc.setLocalDescription(answerDescription)
-
-      const answer = {
-        type: answerDescription.type,
-        sdp: answerDescription.sdp
-      }
-
-      await callDoc.update({ answer })
-
-      offerCandidates.onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          console.log(change)
-          if (change.type === 'added') {
-            let data = change.doc.data()
-            pc.addIceCandidate(new RTCIceCandidate(data))
-          }
-        })
-      })
-    }
-  }
 
   const [message, setMessage] = useState('')
   const [chat, setChat] = useState([])

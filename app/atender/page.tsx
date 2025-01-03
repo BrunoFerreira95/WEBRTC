@@ -42,16 +42,29 @@ export default function InteligenciaComunicacao() {
 
 
   const webcamButtonClick = async () => {
-    localStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: true
-    })
     remoteStream = new MediaStream()
 
     // Push tracks from local stream to peer connection
-    localStream.getTracks().forEach((track) => {
-      pc.addTrack(track, localStream)
-    })
+
+      //Obter o stream da câmera e microfone
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+
+
+    const displayStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true,
+    });
+
+    // Adicionar cada track de vídeo e áudio da tela ao localStream
+    displayStream.getTracks().forEach(track => {
+      localStream.addTrack(track);
+    });
+
+    // Agora 'localStream' contém as tracks da câmera/microfone e da tela
+    // Adicione as tracks do localStream ao seu PeerConnection
+    localStream.getTracks().forEach(track => {
+      pc.addTrack(track, localStream);
+    });
 
     // Pull tracks from remote stream, add to video stream
     pc.ontrack = (event) => {
@@ -70,7 +83,6 @@ export default function InteligenciaComunicacao() {
     webcamButton.disabled = true
     hangupButton.disabled = false
 
-    voiceClick()
     webcamVideo.current.hidden = false
     callButton.current.hidden = true
     webcamButton.current.hidden = true
@@ -78,83 +90,7 @@ export default function InteligenciaComunicacao() {
     setShowStop(true)
   }
 
-  // // VOICE CALL ---------------------------------------------------------------------------------
-  const voiceClick = async () => {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: false,
-      audio: true
-    })
-    remoteStream = new MediaStream()
-
-    // Push tracks from local stream to peer connection
-    localStream.getTracks().forEach((track) => {
-      pc.addTrack(track, localStream)
-    })
-
-    // Pull tracks from remote stream, add to video stream
-    pc.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
-        remoteStream.addTrack(track)
-      })
-    }
-    const videoElementRemote = voiceSound.current
-    videoElementRemote.srcObject = remoteStream
-
-    callButton.disabled = false
-    answerButton.disabled = false
-    webcamButton.disabled = true
-    hangupButton.disabled = false
-  }
-
   // 2. Create an offer
-  const VoiceCallSound = async () => {
-    // Reference Firestore collections for signaling
-    const callDoc = firestore.collection('voice').doc()
-    const offerCandidates = callDoc.collection('offerCandidates')
-    const answerCandidates = callDoc.collection('answerCandidates')
-
-    callInput.current.value = callDoc.id
-    setInputCallValue(callInput.current?.value)
-    const { data, error } = await supabase
-      .from('codigoComunicacao')
-      .insert([{ codigo: callInput.current?.value }])
-    // Get candidates for caller, save to db
-    pc.onicecandidate = (event) => {
-      event.candidate && offerCandidates.add(event.candidate.toJSON())
-    }
-
-    // Create offer
-    const offerDescription = await pc.createOffer()
-    await pc.setLocalDescription(offerDescription)
-
-    const offer = {
-      sdp: offerDescription.sdp,
-      type: offerDescription.type
-    }
-
-    await callDoc.set({ offer })
-
-    // Listen for remote answer
-    callDoc.onSnapshot((snapshot) => {
-      const data = snapshot.data()
-      if (!pc.currentRemoteDescription && data?.answer) {
-        const answerDescription = new RTCSessionDescription(data.answer)
-        pc.setRemoteDescription(answerDescription)
-      }
-    })
-
-    // When answered, add candidate to peer connection
-    answerCandidates.onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const candidate = new RTCIceCandidate(change.doc.data())
-          pc.addIceCandidate(candidate)
-        }
-      })
-    })
-
-    hangupButton.disabled = false
-  }
   const handleInputCallChange = () => {
     const value = callInput.current?.value || ''
     setInputCallValue(value)
@@ -208,7 +144,6 @@ export default function InteligenciaComunicacao() {
         }
       })
     })
-    VoiceCallSound()
 
     hangupButton.disabled = false
   }
@@ -561,8 +496,8 @@ export default function InteligenciaComunicacao() {
         <div>
 
 
-          
-            <ToastContainer />
+
+          <ToastContainer />
         </div>
       </div>
     </>
