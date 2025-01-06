@@ -37,22 +37,22 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const { call, receiver } = user.app_metadata || {};
 
-    if (currentPath.startsWith('/ligar') && !call) {
-      return NextResponse.redirect(`${origin}/`);
-    }
+    // if (currentPath.startsWith('/ligar') && !call) {
+    //   return NextResponse.redirect(`${origin}/`);
+    // }
 
-    if (currentPath.startsWith('/atender') && !receiver) {
-      return NextResponse.redirect(`${origin}/`);
-    }
+    // if (currentPath.startsWith('/atender') && receiver) {
+    //   return NextResponse.redirect(`${origin}/`);
+    // }
 
-    if (currentPath === '/') {
-      if (!call) {
-        return NextResponse.redirect(`${origin}/ligar`);
-      }
-      if (!receiver) {
-        return NextResponse.redirect(`${origin}/atender`);
-      }
-    }
+    // if (currentPath === '/') {
+    //   if (!call) {
+    //     return NextResponse.redirect(`${origin}/ligar`);
+    //   }
+    //   if (!receiver) {
+    //     return NextResponse.redirect(`${origin}/atender`);
+    //   }
+    // }
   }
 
   // Redirect to login if the user is not authenticated
