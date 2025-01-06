@@ -5,9 +5,12 @@ export async function updateSession(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const currentPath = requestUrl.pathname;
   const origin = requestUrl.origin;
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = NextResponse.next({ request });
+
+  // Skip redirection for /manifest.json
+  if (currentPath === '/manifest.json') {
+    return supabaseResponse;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,15 +21,10 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            supabaseResponse.cookies.set(name, value, options);
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
         },
       },
     }
@@ -39,17 +37,14 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const { call, receiver } = user.app_metadata || {};
 
-    // Redirecionamento específico para '/ligar' se o usuário não tiver 'call'
     if (currentPath.startsWith('/ligar') && !call) {
       return NextResponse.redirect(`${origin}/`);
     }
 
-    // Redirecionamento específico para '/atender' se o usuário não tiver 'receiver'
     if (currentPath.startsWith('/atender') && !receiver) {
       return NextResponse.redirect(`${origin}/`);
     }
 
-    // Se o usuário estiver na página inicial e não tiver call ou receiver
     if (currentPath === '/') {
       if (call) {
         return NextResponse.redirect(`${origin}/ligar`);
@@ -60,12 +55,8 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Redireciona para login se o usuário não estiver autenticado
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
+  // Redirect to login if the user is not authenticated
+  if (!user && !currentPath.startsWith('/login') && !currentPath.startsWith('/auth')) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
