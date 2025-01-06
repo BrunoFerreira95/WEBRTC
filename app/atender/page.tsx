@@ -315,24 +315,7 @@ const GcmComunicasao = () => {
               onChange={handleInputCallChange}
               value={inputCallValue}
             />
-            {inputCallValue.length > 0 ? (
-              <>
-                <button
-                  ref={callButton}
-                  className="bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-all duration-300 hidden"
-                >
-                  Fazer Ligação
-                </button>
-              </>
-            ) : (
-              <button
-                ref={answerButton}
-                className="bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-all duration-300"
-                onClick={answerButtonClick}
-              >
-                Atender Ligação
-              </button>
-            )}
+
           </div>
         </div>
       </div>

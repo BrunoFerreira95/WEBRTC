@@ -110,41 +110,82 @@ export class WebRTCManager {
         });
     }
 
-  async answerCall(callId:string) {
-    const callDoc = this.firestore.collection('calls').doc(callId);
-    const answerCandidates = callDoc.collection('answerCandidates');
+    async answerCall(callId: string) {
+      const callDoc = this.firestore.collection('calls').doc(callId);
+      const answerCandidates = callDoc.collection('answerCandidates');
       const offerCandidates = callDoc.collection('offerCandidates');
-    this.pc.onicecandidate = (event) => {
-      event.candidate && answerCandidates.add(event.candidate.toJSON());
-    };
-
-    const callData = (await callDoc.get()).data();
-        if (callData) {
-      const offerDescription = callData.offer;
-      await this.pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
-      const answerDescription = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answerDescription);
-      const answer = {
-        type: answerDescription.type,
-        sdp: answerDescription.sdp,
-      };
-      await callDoc.update({ answer });
-
-          offerCandidates.onSnapshot((snapshot) => {
-              snapshot.docChanges().forEach((change) => {
-                  if (change.type === 'added') {
-                      let data = change.doc.data();
-                      this.pc.addIceCandidate(new RTCIceCandidate(data));
-                  }
-              });
-          });
+  
+      this.pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          answerCandidates.add(event.candidate.toJSON());
         }
-     this.pc.ontrack = (event) => {
-         if(this.remoteStream){
-           this.setRemoteVideoSrc(event.streams[0]);
-           }
-     };
-  }
+      };
+  
+  
+      const callData = (await callDoc.get()).data();
+      if (callData) {
+        const offerDescription = callData.offer;
+        await this.pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+  
+        const answerDescription = await this.pc.createAnswer();
+        await this.pc.setLocalDescription(answerDescription);
+  
+        const answer = {
+          type: answerDescription.type,
+          sdp: answerDescription.sdp,
+        };
+        await callDoc.update({ answer });
+  
+  
+       const unsubscribeOfferCandidates = offerCandidates.onSnapshot((snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const data = change.doc.data();
+            if (!data) return; // Handle cases where doc data is missing
+  
+            try {
+              const candidate = new RTCIceCandidate(data);
+                switch (change.type) {
+                  case 'added':
+                  case 'modified':
+                      this.pc.addIceCandidate(candidate);
+                      break;
+                      case 'removed':
+                          //Handle removal if needed.
+                      break;
+                   }
+            } catch(error){
+                console.error('Error adding ice candidate:', error, data);
+            }
+  
+  
+            });
+         });
+          this.pc.onconnectionstatechange = async() => {
+              if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
+                  console.log('connection state changed, attempt re-connect')
+                  unsubscribeOfferCandidates();
+                  await this.reconnect(callId);
+              }
+          }
+      }
+       this.pc.ontrack = (event) => {
+          if(this.remoteStream){
+            this.setRemoteVideoSrc(event.streams[0]);
+            }
+      };
+  
+    }
+  
+  
+    async reconnect(callId:string){
+      try {
+        this.pc = new RTCPeerConnection(this.rtcConfig);
+          await this.answerCall(callId);
+      } catch (error) {
+          console.error("Error during reconnection", error);
+      }
+  
+    }
   stopCamera() {
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => track.stop());
