@@ -46,10 +46,10 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (currentPath === '/') {
-      if (call) {
+      if (!call) {
         return NextResponse.redirect(`${origin}/ligar`);
       }
-      if (receiver) {
+      if (!receiver) {
         return NextResponse.redirect(`${origin}/atender`);
       }
     }
