@@ -35,24 +35,32 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    const { call, receiver } = user.app_metadata || {};
+    const { call, receiver, admin } = user.app_metadata || {};
 
-    // if (currentPath.startsWith('/ligar') && !call) {
-    //   return NextResponse.redirect(`${origin}/`);
-    // }
+    if (currentPath.startsWith('/ligar') && call || admin) {
+      return NextResponse.redirect(`${origin}/`);
+    }
 
-    // if (currentPath.startsWith('/atender') && receiver) {
-    //   return NextResponse.redirect(`${origin}/`);
-    // }
+    if (currentPath.startsWith('/admin') && admin) {
+      return NextResponse.redirect(`${origin}/`);
+    }
 
-    // if (currentPath === '/') {
-    //   if (!call) {
-    //     return NextResponse.redirect(`${origin}/ligar`);
-    //   }
-    //   if (!receiver) {
-    //     return NextResponse.redirect(`${origin}/atender`);
-    //   }
-    // }
+    if (currentPath.startsWith('/atender') && receiver  || admin) {
+      return NextResponse.redirect(`${origin}/`);
+    }
+
+    if (currentPath === '/') {
+
+      if (!admin) {
+        return NextResponse.redirect(`${origin}/admin`);
+      }
+      if (!call || !admin) {
+        return NextResponse.redirect(`${origin}/ligar`);
+      }
+      if (!receiver || !admin) {
+        return NextResponse.redirect(`${origin}/atender`);
+      }
+    }
   }
   console.log(user)
   // Redirect to login if the user is not authenticated
