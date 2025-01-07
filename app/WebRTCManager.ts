@@ -164,6 +164,7 @@ export class WebRTCManager {
          });
           this.pc.onconnectionstatechange = async() => {
               if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
+                console.log(this.pc.connectionState)
                   console.log('connection state changed, attempt re-connect')
                   unsubscribeOfferCandidates();
                   await this.reconnect(callId);
