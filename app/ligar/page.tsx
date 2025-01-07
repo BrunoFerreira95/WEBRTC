@@ -404,7 +404,7 @@ const InteligenciaComunicacao = () => {
             {chat.map((message, index) => (
               <div key={index} className="mb-2 p-2 rounded-md bg-gray-100">
                 <span className="font-semibold">{message.name}:</span>
-                <p className="whitespace-pre-line">{message.mensagem}</p>
+                <p className="whitespace-pre-line text-black">{message.mensagem}</p>
                 <p className="text-xs text-gray-500">
                   {message.data}
                 </p>

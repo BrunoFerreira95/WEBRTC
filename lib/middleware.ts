@@ -54,7 +54,7 @@ export async function updateSession(request: NextRequest) {
     //   }
     // }
   }
-
+  console.log(user)
   // Redirect to login if the user is not authenticated
   if (!user && !currentPath.startsWith('/login') && !currentPath.startsWith('/auth')) {
     const url = request.nextUrl.clone();
