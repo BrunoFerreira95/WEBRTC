@@ -144,7 +144,9 @@ export class WebRTCManager {
   
             try {
               const candidate = new RTCIceCandidate(data);
+                console.log(change.type)
                 switch (change.type) {
+                  
                   case 'added':
                   case 'modified':
                       this.pc.addIceCandidate(candidate);
