@@ -22,7 +22,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
+            // Set cookies in the response object
             supabaseResponse.cookies.set(name, value, options);
           });
         },
@@ -35,34 +35,37 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    const { call, receiver, admin } = user.app_metadata || {};
+    const userrole = user?.app_metadata.userrole;
+    console.log(userrole);
 
-    if (currentPath.startsWith('/ligar') && call || admin) {
+    // Fix redirection logic based on user role and path
+    // Prevent redirecting if the user is already on the correct path
+    if (currentPath.startsWith('/ligar') && (userrole !== '"call"' && userrole !== '"admin"')) {
       return NextResponse.redirect(`${origin}/`);
     }
 
-    if (currentPath.startsWith('/admin') && admin) {
+    if (currentPath.startsWith('/atender') && (userrole !== '"receiver"' && userrole !== '"admin"')) {
       return NextResponse.redirect(`${origin}/`);
     }
 
-    if (currentPath.startsWith('/atender') && receiver  || admin) {
+    if (currentPath.startsWith('/admin') && userrole !== '"admin"') {
       return NextResponse.redirect(`${origin}/`);
     }
 
     if (currentPath === '/') {
-
-      if (!admin) {
-        return NextResponse.redirect(`${origin}/admin`);
-      }
-      if (!call || !admin) {
+      // Ensure that 'call' or 'admin' users are redirected to appropriate paths
+      if (userrole === '"call"' && currentPath !== `${origin}/ligar`) {
         return NextResponse.redirect(`${origin}/ligar`);
       }
-      if (!receiver || !admin) {
+      if (userrole === '"receiver"' && currentPath !== `${origin}/atender`) {
         return NextResponse.redirect(`${origin}/atender`);
+      }
+      if (userrole === '"admin"' && currentPath !== `${origin}/admin`) {
+        return NextResponse.redirect(`${origin}/admin`);
       }
     }
   }
-  console.log(user)
+
   // Redirect to login if the user is not authenticated
   if (!user && !currentPath.startsWith('/login') && !currentPath.startsWith('/auth')) {
     const url = request.nextUrl.clone();

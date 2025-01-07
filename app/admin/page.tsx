@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClientService";
 
 // Criação do cliente Supabase
 export default function Profiles() {
@@ -40,6 +40,7 @@ export default function Profiles() {
             }
 
             console.log(`Role do usuário ${userId} alterado para ${newRole}`);
+            console.log(`data?`,data,`error?`,error)
             fetchProfiles(); // Atualizar a lista de perfis
         } catch (error) {
             console.error("Erro ao alterar o role:", error.message);
