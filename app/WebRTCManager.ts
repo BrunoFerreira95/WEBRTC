@@ -180,15 +180,16 @@ export class WebRTCManager {
     }
   
   
-    async reconnect(callId:string){
+    async reconnect(callId: string) {
       try {
-        this.pc = new RTCPeerConnection(this.rtcConfig);
-          await this.answerCall(callId);
+        console.log('Reconnecting...');
+        this.pc = new RTCPeerConnection(this.pc.getConfiguration());
+        await this.answerCall(callId);
       } catch (error) {
-          console.error("Error during reconnection", error);
+        console.error('Reconnection failed:', error);
       }
-  
     }
+  
   stopCamera() {
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => track.stop());
