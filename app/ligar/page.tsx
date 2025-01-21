@@ -16,48 +16,51 @@ import Message from '../assets/icons/message.svg';
 
 import React from 'react';
 import { WebRTCManager } from '../WebRTCManager';
+import WelcomeModal from '@/components/WelcomeModal';
+import UserProfile from '@/components/UserProfile';
+import AdminNav from '@/components/AdminNav';
 
 const InteligenciaComunicacao = () => {
   // --- Estados e Refs ---
-    const [showStop, setShowStop] = useState(false);
-    const [inputCallValue, setInputCallValue] = useState('');
-    const [chat, setChat] = useState([]);
-    const [signalCGM, setSignalCGM] = useState<any>([]);
-    const [buttonError, setButtonError] = useState(false);
-    const webcamButton = useRef<HTMLButtonElement>(null);
-    const webcamVideo = useRef<HTMLVideoElement>(null);
-    const callButton = useRef<HTMLButtonElement>(null);
-    const stopButtonRef = useRef<HTMLButtonElement>(null);
-    const callInput = useRef<HTMLInputElement>(null);
-    const remoteVideo = useRef<HTMLVideoElement>(null);
-    const hangupButton = useRef<HTMLButtonElement>(null);
-    const messageInput = useRef<HTMLInputElement>(null);
-    const [message, setMessage] = useState<string>('');
-    const { firestore } = connectFirebase();
-    const router = useRouter();
-    const session = useSession();
-    const chatContainerRef = useRef<HTMLDivElement>(null);
-    const [remoteVideoSrc, setRemoteVideoSrc] = useState<MediaStream | null>(null);
+  const [showStop, setShowStop] = useState(false);
+  const [inputCallValue, setInputCallValue] = useState('');
+  const [chat, setChat] = useState([]);
+  const [signalCGM, setSignalCGM] = useState<any>([]);
+  const [buttonError, setButtonError] = useState(false);
+  const webcamButton = useRef<HTMLButtonElement>(null);
+  const webcamVideo = useRef<HTMLVideoElement>(null);
+  const callButton = useRef<HTMLButtonElement>(null);
+  const stopButtonRef = useRef<HTMLButtonElement>(null);
+  const callInput = useRef<HTMLInputElement>(null);
+  const remoteVideo = useRef<HTMLVideoElement>(null);
+  const hangupButton = useRef<HTMLButtonElement>(null);
+  const messageInput = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<string>('');
+  const { firestore } = connectFirebase();
+  const router = useRouter();
+  const session = useSession();
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [remoteVideoSrc, setRemoteVideoSrc] = useState<MediaStream | null>(null);
 
 
-    const webRTCManagerRef = useRef<WebRTCManager | null>(null);
-    // --- Aux Functions ---
+  const webRTCManagerRef = useRef<WebRTCManager | null>(null);
+  // --- Aux Functions ---
 
-    useEffect(() => {
-      webRTCManagerRef.current = new WebRTCManager(
-        firestore,
-          setInputCallValue,
-          setRemoteVideoSrc,
-          setShowStop,
-          router,
-          stopButtonRef,
-          callInput
-      );
-      return () => {
-        if(webRTCManagerRef.current) {
-            webRTCManagerRef.current.stopCall()
-          }
-        }
+  useEffect(() => {
+    webRTCManagerRef.current = new WebRTCManager(
+      firestore,
+      setInputCallValue,
+      setRemoteVideoSrc,
+      setShowStop,
+      router,
+      stopButtonRef,
+      callInput
+    );
+    return () => {
+      if (webRTCManagerRef.current) {
+        webRTCManagerRef.current.stopCall()
+      }
+    }
   }, [firestore, setInputCallValue, setRemoteVideoSrc, setShowStop, router, stopButtonRef, callInput])
 
   const handleInputCallChange = () => {
@@ -74,8 +77,8 @@ const InteligenciaComunicacao = () => {
 
 
   const playSound = () => {
-       const audio = new Audio(SignalApoio);
-        audio.play();
+    const audio = new Audio(SignalApoio);
+    audio.play();
   };
   const sendSignal = async () => {
     const dataAtual = new Date().toLocaleString('pt-BR', {
@@ -132,9 +135,9 @@ const InteligenciaComunicacao = () => {
       ])
       .select();
     setMessage('');
-      if(messageInput.current){
-          messageInput.current.value = '';
-      }
+    if (messageInput.current) {
+      messageInput.current.value = '';
+    }
   };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -151,26 +154,25 @@ const InteligenciaComunicacao = () => {
     setSignalCGM(signalApoio);
   };
   function reconectar() {
-      router.refresh();
+    router.refresh();
   }
 
   // --- Call Functions ---
 
   const webcamButtonClick = async () => {
-        if(webRTCManagerRef.current) {
-            await webRTCManagerRef.current.startLocalStream(true)
-        }
+    if (webRTCManagerRef.current) {
+      await webRTCManagerRef.current.startLocalStream(true)
+    }
 
 
-      const videoElementLocal = webcamVideo.current;
-      if(videoElementLocal){
-        videoElementLocal.srcObject = webRTCManagerRef.current?.localStream;
-      }
-      const videoElementRemote = remoteVideo.current;
-        if(remoteVideoSrc && videoElementRemote)
-        {
-            videoElementRemote.srcObject = remoteVideoSrc;
-        }
+    const videoElementLocal = webcamVideo.current;
+    if (videoElementLocal) {
+      videoElementLocal.srcObject = webRTCManagerRef.current?.localStream;
+    }
+    const videoElementRemote = remoteVideo.current;
+    if (remoteVideoSrc && videoElementRemote) {
+      videoElementRemote.srcObject = remoteVideoSrc;
+    }
 
     callButton.disabled = false;
     webcamButton.disabled = true;
@@ -187,29 +189,29 @@ const InteligenciaComunicacao = () => {
     setShowStop(true);
   };
   const callButtonClick = async (id: string) => {
-        if(webRTCManagerRef.current){
-            await webRTCManagerRef.current.createOffer()
-        }
-      await supabase.from('codigoComunicacao').insert([{ codigo: callInput.current?.value, IdUser: id }]);
-      hangupButton.disabled = false;
+    if (webRTCManagerRef.current) {
+      await webRTCManagerRef.current.createOffer()
+    }
+    await supabase.from('codigoComunicacao').insert([{ codigo: callInput.current?.value, IdUser: id }]);
+    hangupButton.disabled = false;
   };
   const stopOffer = async () => {
-        if(webRTCManagerRef.current) {
-            await webRTCManagerRef.current.stopCall();
-        }
-        if (remoteVideo.current) {
-            remoteVideo.current.hidden = true;
-        }
-      if(stopButtonRef.current){
-        stopButtonRef.current.hidden = true;
-      }
+    if (webRTCManagerRef.current) {
+      await webRTCManagerRef.current.stopCall();
+    }
+    if (remoteVideo.current) {
+      remoteVideo.current.hidden = true;
+    }
+    if (stopButtonRef.current) {
+      stopButtonRef.current.hidden = true;
+    }
     router.refresh();
   };
-    useEffect(() => {
-        if (remoteVideo.current) {
-            remoteVideo.current.srcObject = remoteVideoSrc;
-        }
-      }, [remoteVideoSrc]);
+  useEffect(() => {
+    if (remoteVideo.current) {
+      remoteVideo.current.srcObject = remoteVideoSrc;
+    }
+  }, [remoteVideoSrc]);
   // --- Effects ---
   useEffect(() => {
     if (
@@ -219,52 +221,53 @@ const InteligenciaComunicacao = () => {
       router.push('/404');
     }
   }, [session, router]);
-    useEffect(() => {
-        supabase
-            .channel('cancelcall')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'signalCancelCall' },
-                () => {
-                    router.refresh();
-                }
-            )
-            .subscribe();
-    }, [router]);
-    useEffect(() => {
-
-        supabase.channel('signalSendToast')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'signalSendToast' },
-                () => {
-                    showToast()
-                }
-            )
-            .subscribe()
-
-    })
-    useEffect(() => {
-        supabase
-            .channel('chat')
-            .on(
-                'postgres_changes',
-                { event: 'insert', schema: 'public', table: 'chat' },
-                () => {
-                    fetchChat();
-                }
-            )
-            .subscribe();
-    }, []);
-    useEffect(() => {
-        fetchChat();
-    }, []);
-
-    useLayoutEffect(() => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+  useEffect(() => {
+    supabase
+      .channel('cancelcall')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'signalCancelCall' },
+        () => {
+          console.log('teste')
+          router.refresh();
         }
-    }, [chat]);
+      )
+      .subscribe();
+  }, [router]);
+  useEffect(() => {
+
+    supabase.channel('signalSendToast')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'signalSendToast' },
+        () => {
+          showToast()
+        }
+      )
+      .subscribe()
+
+  })
+  useEffect(() => {
+    supabase
+      .channel('chat')
+      .on(
+        'postgres_changes',
+        { event: 'insert', schema: 'public', table: 'chat' },
+        () => {
+          fetchChat();
+        }
+      )
+      .subscribe();
+  }, []);
+  useEffect(() => {
+    fetchChat();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chat]);
 
   useEffect(() => {
     supabase
@@ -293,8 +296,17 @@ const InteligenciaComunicacao = () => {
       .subscribe();
   }, []);
 
+  const [showModal, setShowModal] = useState(true)
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+  }
+
   return (
     <div className="bg-fundo min-h-screen max-h-fit p-4">
+      {showModal && <WelcomeModal onClose={handleCloseModal} />}
+      <UserProfile />
+      <AdminNav />
       <div className="flex justify-center">
         <h2 className="text-2xl font-bold mb-4 text-center">Painel de Inteligência</h2>
       </div>
@@ -368,29 +380,28 @@ const InteligenciaComunicacao = () => {
             >
               Fazer Ligação
             </button>
-
-            <button
-              onClick={sendSignal}
-              className="bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 p-3 rounded-md transition duration-300 flex justify-center"
-            >
-              <Image src={Alerta} alt="Ícone" className="h-8 w-8" />
-            </button>
           </div>
 
           {/*  Signal Button List */}
-          <div className="mt-4 bg-gray-100 p-4 rounded-md shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Sinais de Apoio</h3>
-            <div className="space-y-2">
+          <div className="mt-6 bg-gray-50 p-4 rounded-xl shadow-lg border border-gray-200">
+            <h3 className="text-xl font-semibold mb-4 text-gray-900 tracking-tight">Sinais de Apoio</h3>
+            <ul className="space-y-2">
               {signalCGM.map((signalUser) => (
-                <button
-                  key={signalUser.id}
-                  onClick={() => callButtonClick(signalUser.IdUser)}
-                  className="bg-slate-300 hover:bg-slate-400 active:bg-slate-500 p-2 m-2 rounded-lg text-black shadow-md transition duration-300 ease-in-out w-full text-left"
-                >
-                  <span>{signalUser.name}</span>
-                </button>
+                <li key={signalUser.id} className="rounded-xl bg-white shadow-sm border border-gray-100 transition-shadow duration-300 hover:shadow-md  hover:border-gray-200">
+                  <button
+                    onClick={() => callButtonClick(signalUser.IdUser)}
+                    className="flex flex-col w-full p-4 text-left focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-xl"
+                  >
+                    {console.log(signalUser)}
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium text-gray-800 tracking-wide mr-5">{signalUser.name}</span>
+                      <span className="text-gray-500 text-sm font-light tracking-tight">{signalUser.data.split(' ')[1]}</span>
+                    </div>
+                    <span className="text-gray-600 text-sm font-light tracking-tight">{signalUser.email}</span>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </div>

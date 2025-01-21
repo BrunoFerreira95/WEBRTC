@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClientService";
+import UserProfile from "@/components/UserProfile";
+import AdminNav from "@/components/AdminNav";
 
 // Criação do cliente Supabase
 export default function Profiles() {
@@ -53,6 +55,8 @@ export default function Profiles() {
 
     return (
         <div style={{ padding: "2rem" }}>
+            <UserProfile />
+            <AdminNav />
             <h1>Perfis Públicos</h1>
             {loading ? (
                 <p>Carregando...</p>

@@ -19,6 +19,8 @@ import React from 'react';
 import { WebRTCManager } from '../WebRTCManager';
 import { createClient } from '@/lib/server';
 import { getUser } from './user';
+import UserProfile from '@/components/UserProfile';
+import AdminNav from '@/components/AdminNav';
 
 const GcmComunicasao = () => {
   // --- Estados e Refs ---
@@ -99,25 +101,40 @@ const GcmComunicasao = () => {
   }
 
   const Signal = async () => {
-    const dataAtual = new Date().toLocaleString('pt-BR', {
-      timeZone: 'UTC'
-    })
-    const dataFormatada = dataAtual.replace(
-      /(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/,
-      '$3-$2-$1 $4:$5:$6'
-    )
+    const dataAtual = new Date();
+    const dataFormatada = dataAtual.toLocaleString('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$2-$1 $4:$5:$6');
 
-    const user = await getUser()
-    await supabase
-      .from('signalApoio')
-      .insert([
-        {
-          name: `${user.data.user.email} | ${dataFormatada}`,
-          telefone: session?.user.user_metadata.telefone,
-          data: dataFormatada,
-          IdUser: user.data.user.id
-        }
-      ])
+    const userResponse = await getUser();
+    const user = userResponse?.data?.user;
+
+    if (!user) {
+      console.error("Usuário não encontrado.");
+      return;
+    }
+
+    const displayName = user.user_metadata?.name || user.email;
+    try {
+      await supabase
+        .from('signalApoio')
+        .insert([
+          {
+            name: displayName,
+            data: dataFormatada,
+            IdUser: user.id,
+          }
+        ]);
+      return { message: 'Sinal enviado com sucesso' };
+    } catch (error: any) {
+      return { error: `Erro ao enviar sinal: ${error.message}` };
+    }
+
   };
   const sendMessage = async () => {
     const currentDate = new Date();
@@ -269,6 +286,8 @@ const GcmComunicasao = () => {
   }, [inputCallValue]);
   return (
     <div className="bg-fundo min-h-screen max-h-fit p-4">
+      <UserProfile />
+      <AdminNav />
       <div className="flex justify-center mb-5">
         <h2 className="text-2xl font-bold text-center">Painel do GCM</h2>
       </div>
@@ -283,35 +302,35 @@ const GcmComunicasao = () => {
               controls
               playsInline
               style={{ backgroundColor: 'black' }}
-              />
+            />
           </div>
-              {showStop ? (
-          <div className="flex justify-center">
-            <button
-              ref={stopButtonRef}
-              onClick={stopOffer}
-              className="bg-red-500 text-white font-bold px-4 py-2 rounded-md hover:bg-red-700 transition-all duration-300 flex items-center"
+          {showStop ? (
+            <div className="flex justify-center">
+              <button
+                ref={stopButtonRef}
+                onClick={stopOffer}
+                className="bg-red-500 text-white font-bold px-4 py-2 rounded-md hover:bg-red-700 transition-all duration-300 flex items-center"
               >
-              <Image src={Fechar} alt="Fechar" className="h-6 w-6 mr-2" />
-              Parar Ligação
-            </button>
-          </div>
-            ) : null}
+                <Image src={Fechar} alt="Fechar" className="h-6 w-6 mr-2" />
+                Parar Ligação
+              </button>
+            </div>
+          ) : null}
         </div>
         {/* Controls Area */}
-          <div className="flexflex-col w-full md:w-1/3 max-w-sm">
-            <div className=" p-4 rounded-md shadow-md flex flex-col gap-2 mb-4">
-              {/* Call Control  */}
-              <input
-                ref={callInput}
-                hidden
-                className=" h-8 font-semibold rounded-md mb-2 "
-                onChange={handleInputCallChange}
-                value={inputCallValue}
-              />
+        <div className="flexflex-col w-full md:w-1/3 max-w-sm">
+          <div className=" p-4 rounded-md shadow-md flex flex-col gap-2 mb-4">
+            {/* Call Control  */}
+            <input
+              ref={callInput}
+              hidden
+              className=" h-8 font-semibold rounded-md mb-2 "
+              onChange={handleInputCallChange}
+              value={inputCallValue}
+            />
 
-            </div>
           </div>
+        </div>
       </div>
       {/* Chat Section */}
       <div className="flex justify-center">
