@@ -188,7 +188,10 @@ const InteligenciaComunicacao = () => {
     }
     setShowStop(true);
   };
+
+  const [userCallTrack, setUserCallTrack] = useState<string>()
   const callButtonClick = async (id: string) => {
+    setUserCallTrack(id)
     if (webRTCManagerRef.current) {
       await webRTCManagerRef.current.createOffer()
     }
@@ -197,7 +200,7 @@ const InteligenciaComunicacao = () => {
   };
   const stopOffer = async () => {
     if (webRTCManagerRef.current) {
-      await webRTCManagerRef.current.stopCall();
+      await webRTCManagerRef.current.stopCall(userCallTrack, 'stop');
     }
     if (remoteVideo.current) {
       remoteVideo.current.hidden = true;
@@ -207,6 +210,7 @@ const InteligenciaComunicacao = () => {
     }
     router.refresh();
   };
+
   useEffect(() => {
     if (remoteVideo.current) {
       remoteVideo.current.srcObject = remoteVideoSrc;
@@ -301,7 +305,31 @@ const InteligenciaComunicacao = () => {
   const handleCloseModal = () => {
     setShowModal(false)
   }
+  useEffect(() => {
 
+
+    const stopcall = supabase.channel(`user-channel-agent`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'signalCancelCall',
+          filter: `IntId=eq.${userCallTrack}`
+        },
+        (payload) => {
+          if (payload.new?.IntId == userCallTrack && payload.new?.code == 'desligar') {
+            console.log('Evento de cancelamento recebido para o usuário:', userCallTrack);
+            window.location.reload(); // Recarrega a página
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      stopcall.unsubscribe()
+    };
+  }, [userCallTrack]);
   return (
     <div className="bg-fundo min-h-screen max-h-fit p-4">
       {showModal && <WelcomeModal onClose={handleCloseModal} />}

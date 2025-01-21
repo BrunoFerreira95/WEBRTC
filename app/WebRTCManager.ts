@@ -199,8 +199,8 @@ export class WebRTCManager {
       this.setRemoteVideoSrc(null);
     }
   }
-  async stopCall() {
-    await supabase.from('signalCancelCall').insert([{ code: '1' }]).select();
+  async stopCall(id, code) {
+    await supabase.from('signalCancelCall').insert([{ code: code, IntId: id }]).select();
     this.stopCamera();
     if (this.pc) {
       const callDocId = this.callInput.current?.value;

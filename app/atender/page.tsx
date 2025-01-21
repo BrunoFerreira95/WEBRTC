@@ -167,22 +167,25 @@ const GcmComunicasao = () => {
   // --- Call Functions ---
 
   const startCall = async () => {
-    if (webRTCManagerRef.current) {
-      await webRTCManagerRef.current.startLocalStream(false)
-    }
+    const user = await getUser()
+    if (userIdCall == user.data.user.id) {
+      if (webRTCManagerRef.current) {
+        await webRTCManagerRef.current.startLocalStream(false)
+      }
 
-    const videoElementRemote = remoteVideo.current;
-    if (remoteVideoSrc && videoElementRemote) {
-      videoElementRemote.srcObject = remoteVideoSrc;
-    }
+      const videoElementRemote = remoteVideo.current;
+      if (remoteVideoSrc && videoElementRemote) {
+        videoElementRemote.srcObject = remoteVideoSrc;
+      }
 
-    callButton.disabled = false;
-    answerButton.disabled = false;
-    hangupButton.disabled = false;
-    setCall(true);
-    setReceive(true);
-    setShowStop(true);
-    answerButtonClick();
+      callButton.disabled = false;
+      answerButton.disabled = false;
+      hangupButton.disabled = false;
+      setCall(true);
+      setReceive(true);
+      setShowStop(true);
+      answerButtonClick();
+    }
   };
 
   const answerButtonClick = async () => {
@@ -197,7 +200,7 @@ const GcmComunicasao = () => {
   };
   const stopOffer = async () => {
     if (webRTCManagerRef.current) {
-      await webRTCManagerRef.current.stopCall();
+      await webRTCManagerRef.current.stopCall(userIdCall,'desligar');
     }
     if (remoteVideo.current) {
       remoteVideo.current.hidden = true;
@@ -284,6 +287,32 @@ const GcmComunicasao = () => {
       startCall();
     }
   }, [inputCallValue]);
+
+  useEffect(() => {
+
+
+      const stopcall = supabase.channel(`user-channel-${userIdCall}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'signalCancelCall',
+              filter: `IntId=eq.${userIdCall}`
+            },
+              (payload) => {
+                if (payload.new?.IntId == userIdCall ) {
+                  console.log('Evento de cancelamento recebido para o usuário:', userIdCall);
+                  window.location.reload(); // Recarrega a página
+                }
+              }
+          )
+          .subscribe()
+        
+      return () => {
+        stopcall.unsubscribe()
+      };
+  }, [userIdCall]);
   return (
     <div className="bg-fundo min-h-screen max-h-fit p-4">
       <UserProfile />
