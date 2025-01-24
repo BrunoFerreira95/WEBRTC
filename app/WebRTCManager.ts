@@ -218,6 +218,5 @@ export class WebRTCManager {
     if (this.stopButtonRef.current) {
       this.stopButtonRef.current.hidden = true;
     }
-    this.router.refresh();
   }
 }

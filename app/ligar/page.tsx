@@ -10,15 +10,17 @@ import Alerta from '../assets/icons/alerta.png';
 import SignalApoio from '../../public/signalGCM.mp3';
 import { connectFirebase } from '../../lib/firebase';
 import Fechar from '../assets/icons/Fechar.png';
-import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Message from '../assets/icons/message.svg';
+import createToast from '../../components/toast';
 
 import React from 'react';
 import { WebRTCManager } from '../WebRTCManager';
 import WelcomeModal from '@/components/WelcomeModal';
 import UserProfile from '@/components/UserProfile';
 import AdminNav from '@/components/AdminNav';
+import dynamic from 'next/dynamic';
+
 
 const InteligenciaComunicacao = () => {
   // --- Estados e Refs ---
@@ -44,6 +46,7 @@ const InteligenciaComunicacao = () => {
 
 
   const webRTCManagerRef = useRef<WebRTCManager | null>(null);
+  const [screenShared, setScreenShared] = useState(false);
   // --- Aux Functions ---
 
   useEffect(() => {
@@ -163,6 +166,7 @@ const InteligenciaComunicacao = () => {
     if (webRTCManagerRef.current) {
       await webRTCManagerRef.current.startLocalStream(true)
     }
+    setScreenShared(!screenShared);
 
 
     const videoElementLocal = webcamVideo.current;
@@ -174,9 +178,8 @@ const InteligenciaComunicacao = () => {
       videoElementRemote.srcObject = remoteVideoSrc;
     }
 
-    callButton.disabled = false;
+
     webcamButton.disabled = true;
-    hangupButton.disabled = false;
     if (webcamVideo.current) {
       webcamVideo.current.hidden = false;
     }
@@ -184,7 +187,7 @@ const InteligenciaComunicacao = () => {
       callButton.current.hidden = true;
     }
     if (webcamButton.current) {
-      webcamButton.current.hidden = true;
+      webcamButton.current.hidden = false;
     }
     setShowStop(true);
   };
@@ -199,8 +202,10 @@ const InteligenciaComunicacao = () => {
     hangupButton.disabled = false;
   };
   const stopOffer = async () => {
+
     if (webRTCManagerRef.current) {
       await webRTCManagerRef.current.stopCall(userCallTrack, 'stop');
+
     }
     if (remoteVideo.current) {
       remoteVideo.current.hidden = true;
@@ -208,7 +213,10 @@ const InteligenciaComunicacao = () => {
     if (stopButtonRef.current) {
       stopButtonRef.current.hidden = true;
     }
-    router.refresh();
+
+
+
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -319,8 +327,10 @@ const InteligenciaComunicacao = () => {
         },
         (payload) => {
           if (payload.new?.IntId == userCallTrack && payload.new?.code == 'desligar') {
-            console.log('Evento de cancelamento recebido para o usuário:', userCallTrack);
-            window.location.reload(); // Recarrega a página
+            createToast('O usuário desligou a chamada.', 'info');
+            setTimeout(() => {
+              window.location.reload(); // Recarrega a página
+            }, 5000);
           }
         }
       )
@@ -330,6 +340,9 @@ const InteligenciaComunicacao = () => {
       stopcall.unsubscribe()
     };
   }, [userCallTrack]);
+
+
+
   return (
     <div className="bg-fundo min-h-screen max-h-fit p-4">
       {showModal && <WelcomeModal onClose={handleCloseModal} />}
@@ -377,13 +390,24 @@ const InteligenciaComunicacao = () => {
         {/* Controls Area */}
         <div className="flex flex-col w-full md:w-1/3 max-w-sm">
           <div className="bg-gray-100 p-4 rounded-md shadow-md flex flex-col gap-2 mb-4">
-            <button
-              ref={webcamButton}
-              className="bg-green-500 text-white font-bold py-2 rounded-md hover:bg-green-700 transition-all duration-300"
-              onClick={webcamButtonClick}
-            >
-              Compartilhar Tela
-            </button>
+            {screenShared ? (
+              <button
+
+                className="bg-green-500 text-white font-bold py-2 rounded-md transition-all duration-300 cursor-not-allowed"
+                disabled={true}
+              >
+                Compartilhando Tela
+              </button>
+            ) : (
+              <button
+                ref={webcamButton}
+                className="bg-green-500 text-white font-bold py-2 rounded-md hover:bg-green-700 transition-all duration-300"
+                onClick={webcamButtonClick}
+              >
+                Compartilhar Tela
+              </button>
+            )}
+
             {buttonError && (
               <button
                 onClick={reconectar}
@@ -400,14 +424,7 @@ const InteligenciaComunicacao = () => {
               onChange={handleInputCallChange}
               value={inputCallValue}
             />
-            <button
-              ref={callButton}
-              className="bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-all duration-300"
-              onClick={() => callButtonClick(session?.user.id)}
-              hidden
-            >
-              Fazer Ligação
-            </button>
+
           </div>
 
           {/*  Signal Button List */}
@@ -417,10 +434,10 @@ const InteligenciaComunicacao = () => {
               {signalCGM.map((signalUser) => (
                 <li key={signalUser.id} className="rounded-xl bg-white shadow-sm border border-gray-100 transition-shadow duration-300 hover:shadow-md  hover:border-gray-200">
                   <button
+                    disabled={!screenShared}
                     onClick={() => callButtonClick(signalUser.IdUser)}
-                    className="flex flex-col w-full p-4 text-left focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-xl"
+                    className="flex flex-col w-full p-4 text-left focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {console.log(signalUser)}
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-medium text-gray-800 tracking-wide mr-5">{signalUser.name}</span>
                       <span className="text-gray-500 text-sm font-light tracking-tight">{signalUser.data.split(' ')[1]}</span>
@@ -469,7 +486,6 @@ const InteligenciaComunicacao = () => {
         </div>
       </div>
       <div>
-        <ToastContainer />
       </div>
     </div>
   );

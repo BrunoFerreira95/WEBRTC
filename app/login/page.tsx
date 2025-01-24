@@ -1,27 +1,28 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation'; // Hook para redirecionamento
+import { useRouter } from 'next/navigation';
 import { login, signup } from './actions';
+import React from 'react';
 
 export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const [toastMessage, setToastMessage] = useState(null);
-  const router = useRouter(); // Instância do roteador
+  const router = useRouter();
 
   const showToast = (message, redirectPath = null) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
-      if (redirectPath) router.push(redirectPath); // Faz o redirecionamento após o toast
-    }, 3000); // Exibe o toast por 3 segundos
+      if (redirectPath) router.push(redirectPath);
+    }, 1000);
   };
 
   const handleLogin = async (formData) => {
     startTransition(async () => {
       try {
         await login(formData);
-        showToast('Login realizado com sucesso!', '/'); // Redireciona para a página inicial
+        showToast('Login realizado com sucesso!', '/');
       } catch {
         showToast('Erro ao fazer login. Tente novamente.');
       }
@@ -32,7 +33,7 @@ export default function LoginPage() {
     startTransition(async () => {
       try {
         await signup(formData);
-        showToast('Registro realizado com sucesso!', '/'); // Redireciona para a página inicial
+        showToast('Registro realizado com sucesso!', '/');
       } catch {
         showToast('Erro ao registrar. Tente novamente.');
       }
@@ -51,12 +52,19 @@ export default function LoginPage() {
       )}
       <form
         className="space-y-4 max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg"
-        onSubmit={(e) => {
+        onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
           e.preventDefault();
-          const formData = new FormData(e.target);
-          const action = e.nativeEvent.submitter.name;
-          if (action === 'login') handleLogin(formData);
-          if (action === 'signup') handleSignup(formData);
+          const form = e.target as HTMLFormElement;
+          const formData = new FormData(form);
+
+          if (e.nativeEvent && 'submitter' in e.nativeEvent) {
+             const submitter = (e.nativeEvent as SubmitEvent).submitter;
+            if(submitter instanceof HTMLButtonElement && submitter.name){
+                 const action = submitter.name;
+                 if (action === 'login') handleLogin(formData);
+                 if (action === 'signup') handleSignup(formData);
+             }
+          }
         }}
       >
         <div>
