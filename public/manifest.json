@@ -4,8 +4,8 @@
     "display": "standalone",
     "scope": "/",
     "start_url": "/",
-    "name": "Service Security",
-    "short_name": "Service Security",
+    "name": "Apoio Service",
+    "short_name": "Apoio Service",
     "icons": [
         {
             "src": "/icon-192x192.png",

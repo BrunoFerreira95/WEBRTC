@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Service Security",
-  description: "Service Security Apps",
+  title: "Apoio Service Security",
+  description: "Apoio Service Security",
   manifest: '/manifest.json',
 };
 
